@@ -3,89 +3,120 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Qulen MINT</title>
-  <link rel="icon" type="image/gif" href="GIF_20250530_163941_147.gif" />
+  <script src="https://unpkg.com/@thirdweb-dev/sdk@latest/dist/browser.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@thirdweb-dev/sdk/dist/browser.umd.min.js"></script>
+  <link rel="icon" href="GIF_20250530_163941_147.gif" type="image/gif">
   <style>
     body {
       margin: 0;
-      font-family: 'Arial', sans-serif;
-      background-color: #d6f5ff;
-      color: #003366;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-      background-image: linear-gradient(to bottom, #d6f5ff, #ffffff);
-    }
-    .container {
+      padding: 0;
+      background: #d8f1ff; /* Pure perfect light blue */
+      font-family: Arial, sans-serif;
       text-align: center;
-      padding: 2rem;
-      border-radius: 16px;
-      box-shadow: 0 0 30px rgba(0, 0, 0, 0.15);
-      background-color: white;
-      max-width: 400px;
     }
-    .logo {
-      width: 100px;
-      margin-bottom: 1rem;
+    header {
+      padding: 20px;
+    }
+    img.logo {
+      width: 150px;
+      height: auto;
+    }
+    h1 {
+      color: #222;
+    }
+    .mint-container {
+      margin-top: 20px;
     }
     .btn {
-      margin-top: 1rem;
-      padding: 1rem 2rem;
-      background-color: #00bfff;
+      background-color: #0066ff;
       color: white;
+      padding: 15px 30px;
       border: none;
-      border-radius: 12px;
-      font-size: 1rem;
+      border-radius: 8px;
+      font-size: 18px;
       cursor: pointer;
+      margin: 10px;
     }
     .btn:hover {
-      background-color: #0099cc;
+      background-color: #0052cc;
     }
-    .social {
-      margin-top: 1rem;
+    .status {
+      margin-top: 20px;
+      font-weight: bold;
     }
-    .social a img {
-      width: 32px;
-      margin: 0 0.5rem;
+    footer {
+      margin-top: 40px;
+    }
+    .social-icons a {
+      text-decoration: none;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <img src="GIF_20250530_163941_147.gif" alt="Logo" class="logo" />
+  <header>
+    <img src="GIF_20250530_163941_147.gif" alt="Qulen Logo" class="logo" />
     <h1>Qulen MINT</h1>
-    <p>Mint your exclusive Qulen NFT for 0.0075 ETH on Base</p>
-    <button class="btn" onclick="mintNFT()">Mint</button>
-    <div class="social">
+  </header>
+  <div class="mint-container">
+    <button id="connectWallet" class="btn">Connect Wallet</button>
+    <button id="mintNFT" class="btn" disabled>Mint NFT</button>
+    <div class="status" id="status">Mint price and status will appear here...</div>
+  </div>
+  <footer>
+    <div class="social-icons">
       <a href="https://x.com/QulenBase" target="_blank">
-        <img src="https://cdn-icons-png.flaticon.com/512/733/733579.png" alt="Twitter" />
+        <img src="https://cdn-icons-png.flaticon.com/512/5968/5968830.png" alt="Twitter" width="30" />
       </a>
     </div>
-  </div>
+  </footer>
   <script>
     const contractAddress = "0xcfc155311d2963e452C5482B593317177ECdeCE2";
-    const chainId = 8453; // Base Mainnetasync function mintNFT() {
-  if (!window.ethereum) return alert("Please install MetaMask to mint.");
+    const network = "base";
+    let contract, provider, signer;const sdk = new window.thirdweb.ThirdwebSDK("base");
 
-  await window.ethereum.request({ method: 'eth_requestAccounts' });
-  const provider = new ethers.providers.Web3Provider(window.ethereum);
-  const signer = provider.getSigner();
-  const sdk = new thirdweb.ThirdwebSDK(signer, {
-    activeChain: "base"
-  });
-
-  const contract = await sdk.getContract(contractAddress);
-  try {
-    const tx = await contract.erc721.claim(1);
-    alert("NFT Minted Successfully! Tx: " + tx.receipt.transactionHash);
-  } catch (err) {
-    console.error(err);
-    alert("Mint failed. Make sure you have enough ETH on Base.");
+async function connectWallet() {
+  if (window.ethereum) {
+    try {
+      await window.ethereum.request({ method: "eth_requestAccounts" });
+      provider = new ethers.providers.Web3Provider(window.ethereum);
+      signer = provider.getSigner();
+      contract = await sdk.getContract(contractAddress, "nft-drop");
+      document.getElementById("status").textContent = "Wallet connected";
+      document.getElementById("mintNFT").disabled = false;
+      getClaimConditions();
+    } catch (err) {
+      console.error(err);
+      document.getElementById("status").textContent = "Failed to connect wallet.";
+    }
+  } else {
+    alert("Please install MetaMask!");
   }
 }
+
+async function getClaimConditions() {
+  try {
+    const active = await contract.claimConditions.getActive();
+    const price = ethers.utils.formatUnits(active.price);
+    document.getElementById("status").textContent = `Mint Price: ${price} ETH`;
+  } catch (err) {
+    console.error(err);
+    document.getElementById("status").textContent = "No active claim condition found.";
+  }
+}
+
+async function mintNFT() {
+  try {
+    document.getElementById("status").textContent = "Minting...";
+    await contract.erc721.claim(1);
+    document.getElementById("status").textContent = "✅ Mint successful!";
+  } catch (err) {
+    console.error(err);
+    document.getElementById("status").textContent = "❌ Mint failed.";
+  }
+}
+
+document.getElementById("connectWallet").addEventListener("click", connectWallet);
+document.getElementById("mintNFT").addEventListener("click", mintNFT);
 
   </script>
 </body>
